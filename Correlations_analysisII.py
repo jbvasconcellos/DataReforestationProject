@@ -4,24 +4,81 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+import datetime
 # from functools import reduce
 
 %matplotlib inline
+
 # %% codecell
 # IMPORT DATA
-df = pd.read_csv('Base_ATER.csv', index_col=0)
+df_Areas = pd.read_csv('BaseATER_Areas.csv', index_col=0)
+df_Properties = pd.read_csv('BaseATER_Properties.csv', index_col=0)
+df_Properties.drop(['Farm', 'Num_Visits', 'COD_EXT_x', 'COD_EXT_y', 'NOME DA ASSOCIÇÃO'], axis=1, inplace=True)
+df_Areas.info()
+
+df_Areas[['Year_RL', 'Year_APP']] = df_Areas[['Year_RL', 'Year_APP']].astype(int)
+# DRY!!
+df_Areas['Year_RL'] = pd.to_datetime(df_Areas['Year_RL'], format='%Y')
+df_Areas['Year_APP'] = pd.to_datetime(df_Areas['Year_APP'], format='%Y')
+df_Areas['Year_Selection'] = pd.to_datetime(df_Areas['Year_Selection'], format='%Y')
+df_Areas['Year_Implementation'] = pd.to_datetime(df_Areas['Year_Implementation'], format='%Y')
+# df_Areas.info()
+
+# HERE I STOPPED
+
+# COLUMNS CATEGORIES
+materials = ['Piles', 'Columns', 'Tensioners', 'Wire_rolls', 'Carbonate']
+seedlings = ['Seedlings_APP','Seedlings_RL']
+areas = ['APP_Area', 'RL_Area', 'Total_Area']
+
+df_Areas.set_index(keys=['COD_PRO', 'COD_SEL'], inplace=True)
+df_Properties.set_index('COD_PRO', inplace=True)
+
+
+
+# Correct year format
+# HERE I STOPPED!
+df_Areas.head()
+
+
+
+df_Areas[areas].loc[26, 'Total_Area'] == df_Areas[['APP_Area', 'RL_Area']].loc[26,:].sum().round(2)
+
+df_Areas[areas][df_Areas['Total_Area'] == 0]
+
+# exclude rows with null Total_Area and both APP_Area and RL_Area also null ,i.e.
+# select only rows with non null Total_Area and either APP_Area or RL_Area different than zero
+df_Areas = df_Areas[(df_Areas['Total_Area'] > 0) & ((df_Areas['APP_Area'] != 0) | (df_Areas['RL_Area'] != 0))]
+# Complementar:
+# df_Areas[(df_Areas['Total_Area'] == 0) | (df_Areas['APP_Area'] == 0) & (df_Areas['RL_Area'] == 0)]
+
+df_Areas.shape[0]
+
+df_Areas[(df_Areas['Total_Area'] > 0) & ((df_Areas['APP_Area'] != 0) | (df_Areas['RL_Area'] != 0))].shape
+df_Areas[(df_Areas['Total_Area'] == 0) | (df_Areas['APP_Area'] == 0) & (df_Areas['RL_Area'] == 0)].shape
+
+df_Areas['Total_Area'] = df_Areas['Total_Area'].replace(0, np.nan)
+df_Areas.dropna(subset=areas, how='all', inplace=True)
+
+df_Areas.drop(df_Areas[df_Areas['Total_Area'].isna() & (df_Areas['APP_Area'] == 0) & (df_Areas['RL_Area'] == 0)].index, inplace=True)
+df_Areas[df_Areas['Total_Area'] != df_Areas[['APP_Area', 'RL_Area']].sum(axis=1)]
+
+# HERE I STOPPED. FINISH THE REMOVAL OF MISSING ROWS
+# ======================================================== #
+df_Areas.drop(df_Areas[(df_Areas['Total_Area'] == 0) & (df_Areas['APP_Area'].isna()) & (df_Areas['RL_Area'].isna()) & (df_Areas['Piles'].isna())].index, axis=0)
+df_Areas.drop(df_Areas[(df_Areas['Total_Area'] == 0) & (df_Areas['APP_Area'].isna()) & (df_Areas['RL_Area'].isna())], axis=1)# & (df_Areas['APP_Area'].isna() == False)]
+
+df_Areas.info()
+df_Areas[df_Areas['APP_Area'].isna() & df_Areas['RL_Area'].isna()].shape[0]
 
 # SELECT AREAS WITH COMPLETED ISOLATION WORKS ONLY
 df['Concluded_Isolation'] = df.loc[:, 'Concluded_Isolation'].astype('category')
 df_Iso = df[(df['Isolation'] == 'CONCLUIDO') | (df['Concluded_Isolation'] == 1)].reset_index(drop=True)
 
 # DROP A FEW COLUMNS WE WON'T USE
-df_Iso.drop(['COD_PLA', 'Farm', 'Num_Visits', 'GLEBA', 'LINHA', 'KM', 'LOTE'], axis=1, inplace=True)
 
 # FILL MISSING DATA
-materials = ['Piles', 'Columns', 'Tensioners', 'Wire_rolls', 'Carbonate']
-seedlings = ['Seedlings_APP','Seedlings_RL']
-areas = ['APP_Area', 'RL_Area', 'Total_Area']
+
 
 df_Iso[materials] = df_Iso[materials].fillna(0).astype(float)
 df_Iso[areas] = df_Iso[areas].fillna(0).astype(float)
